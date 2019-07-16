@@ -1,6 +1,7 @@
 import express from 'express';
 
 import Summoner from '../../schema/summoners';
+import SummonerMatch from '../../schema/summonerMatches';
 import Match from '../../schema/matches';
 
 import callApi from '../../utils/callApi';
@@ -9,44 +10,62 @@ const router = express.Router();
 
 const {HOST, TOKEN} = process.env;
 
-const geMatches = async (accountId, queue) => {
+const getMatches = async (accountId, queue, beginIndex, timestamp) => {
   const result = await callApi(
     `/match/v4/matchlists/by-account/${accountId}`,
-    {queue}
+    {
+      queue,
+      beginIndex,
+    }
   );
-  
-  const count = result.totalGames - result.endIndex;
 
-  const mores = [];
-  for(let i = 1; (i-1)*100 < count; i++) {
-    mores.push(await callApi(
-      `/match/v4/matchlists/by-account/${accountId}`,
-      {
-        queue,
-        beginIndex: i*100,
-      },
-    ));
+  const newMatches = result.matches.filter(m => !timestamp || m.timestamp > timestamp);
+
+  if(newMatches.length === 0) {
+    return await Match.find({timestamp: {$lte: timestamp}});
   }
 
-  mores.forEach(m => {
-    result.matches.push(...m.matches);
-    result.endIndex = m.endIndex;
-  });
+  Match.insertMany(newMatches)
+  SummonerMatch.insertMany(newMatches.map(m => ({
+    accountId,
+    gameId: m.gameId,
+    timestamp: m.timestamp,
+  })));
 
-  return result;
+  if(newMatches.length < result.matches.length) {
+    return [
+      ...newMatches,
+      ...(await Match.find({timestamp: {$lte: timestamp}}))
+    ];
+  }
+
+  if(result.endIndex === result.totalGames) {
+    return result.matches;
+  }
+
+  return [
+    ...result.matches,
+    ...(await getMatches(accountId, queue, beginIndex + 100, timestamp)),
+  ];
 }
 
 router.get('/:accountId/', async (req, res) => {
   try {
-    // const summoner = await Summoner.findOne({accountId: req.params.accountId}).exec();
-    const result = await geMatches(
+    const summonerMatches = await SummonerMatch
+      .find({accountId: req.params.accountId})
+      .sort({timestamp: -1})
+      .limit(1);
+
+    const result = await getMatches(
       req.params.accountId,
-      req.query.queue
+      req.query.queue,
+      0,
+      summonerMatches[0] && summonerMatches[0].timestamp
     );
+
     res.json(result);
 
   } catch(e) {
-    console.error('error', e);
     res.json(e);
   }
 });

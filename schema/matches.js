@@ -2,45 +2,21 @@ import mongoose from 'mongoose';
 
 const {Schema} = mongoose;
 const matchSchema = new Schema({
-  seasonId: {
-    type: Number,
-  },
-  queueId: {
-    type: Number,
-  },
   gameId: {
     type: Number,
-  },
-  participantIdentities: {
-    type: Array,
-  },
-  gameVersion: {
-    type: String,
   },
   platformId: {
     type: String,
   },
-  gameMode: {
-    type: String,
-  },
-  mapId: {
+  timestamp: {
     type: Number,
   },
-  gameType: {
-    type: String,
-  },
-  teams: {
-    type: Array,
-  },
-  participants: {
-    type: Array,
-  },
-  gameDuration: {
+  queue: {
     type: Number,
   },
-  gameCreation: {
-    type: Number,
-  },
+  season: {
+    type: Number
+  }
 });
 
 export default mongoose.model('Match', matchSchema);
