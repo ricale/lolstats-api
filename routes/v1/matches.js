@@ -3,12 +3,24 @@ import express from 'express';
 import Summoner from '../../schema/summoners';
 import SummonerMatch from '../../schema/summonerMatches';
 import Match from '../../schema/matches';
+import MatchDetail from '../../schema/matchDetails';
 
 import callApi from '../../utils/callApi';
 
 const router = express.Router();
 
 const {HOST, TOKEN} = process.env;
+
+const sleep = (ms) => (
+  new Promise((resolve, reject) => setTimeout(resolve, ms))
+);
+
+const insertMatchDetail = async (gameId) => {
+  const result = await callApi(`/match/v4/matches/${gameId}`);
+  await MatchDetail.create(result)
+  // FIXME: remove later
+  await sleep(100); 
+}
 
 const getMatches = async (accountId, queue, beginIndex, timestamp) => {
   const result = await callApi(
@@ -19,18 +31,25 @@ const getMatches = async (accountId, queue, beginIndex, timestamp) => {
     }
   );
 
+  console.log('>>> timestamp', timestamp);
+
   const newMatches = result.matches.filter(m => !timestamp || m.timestamp > timestamp);
+
+  console.log('>>> newMatches', newMatches.length);
 
   if(newMatches.length === 0) {
     return await Match.find({timestamp: {$lte: timestamp}});
   }
 
-  Match.insertMany(newMatches)
-  SummonerMatch.insertMany(newMatches.map(m => ({
+  await Match.insertMany(newMatches)
+  await SummonerMatch.insertMany(newMatches.map(m => ({
     accountId,
     gameId: m.gameId,
     timestamp: m.timestamp,
   })));
+  for(let i = 0; i < newMatches.length; i++) {
+    await insertMatchDetail(newMatches[i].gameId);
+  }
 
   if(newMatches.length < result.matches.length) {
     return [
@@ -51,21 +70,28 @@ const getMatches = async (accountId, queue, beginIndex, timestamp) => {
 
 router.get('/:accountId/', async (req, res) => {
   try {
-    const summonerMatches = await SummonerMatch
+    const lastSummonerMatch = await SummonerMatch
       .find({accountId: req.params.accountId})
       .sort({timestamp: -1})
       .limit(1);
 
-    const result = await getMatches(
+    await getMatches(
       req.params.accountId,
       req.query.queue,
       0,
-      summonerMatches[0] && summonerMatches[0].timestamp
+      lastSummonerMatch[0] && lastSummonerMatch[0].timestamp
     );
 
-    res.json(result);
+    const summonerMatches = await SummonerMatch
+      .find({accountId: req.params.accountId});
+
+    const matchDetails = await MatchDetail
+      .find({gameId: summonerMatches.map(m => m.gameId)});
+
+    res.json(matchDetails);
 
   } catch(e) {
+    console.error(e);
     res.json(e);
   }
 });

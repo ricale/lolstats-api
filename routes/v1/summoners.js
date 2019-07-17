@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.get('/:username', async (req, res) => {
   try {
-    const result = await callApi(`/summoner/v4/summoners/by-name/${req.params.username}`);
+    const result = await callApi(`/summoner/v4/summoners/by-name/${encodeURIComponent(req.params.username)}`);
     const summoner = await Summoner.findOne({accountId: result.accountId}).exec();
 
     if(!summoner) {

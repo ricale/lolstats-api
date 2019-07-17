@@ -30,6 +30,8 @@ export default () => {
     connect();
   });
 
+  require('./matchDetails');
   require('./matches');
+  require('./summonerMatches');
   require('./summoners');
 }
