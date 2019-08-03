@@ -4,6 +4,7 @@ const {Schema} = mongoose;
 const matchSchema = new Schema({
   gameId: {
     type: Number,
+    unique: true,
   },
   platformId: {
     type: String,

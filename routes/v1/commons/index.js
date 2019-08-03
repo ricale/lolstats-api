@@ -1,0 +1,1 @@
+export fetchMatches from './fetchMatches';

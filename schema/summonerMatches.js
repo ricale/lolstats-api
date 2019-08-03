@@ -8,6 +8,9 @@ const summonerMatchSchema = new Schema({
   gameId: {
     type: Number,
   },
+  queueId: {
+    type: Number,
+  },
   timestamp: {
     type: Number,
   },

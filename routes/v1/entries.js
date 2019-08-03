@@ -9,8 +9,8 @@ const router = express.Router();
 
 router.get('/:userId', async (req, res) => {
   try {
-    const result = await callApi(`/league/v4/entries/by-summoner/${req.params.userId}`);
-    res.json(result);
+    const {body} = await callApi(`/league/v4/entries/by-summoner/${req.params.userId}`);
+    res.json(body);
 
   } catch(e) {
     console.error('error', e);

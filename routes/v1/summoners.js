@@ -9,7 +9,13 @@ const router = express.Router();
 
 router.get('/:username', async (req, res) => {
   try {
-    const result = await callApi(`/summoner/v4/summoners/by-name/${encodeURIComponent(req.params.username)}`);
+    const summonerByUsername = (await Summoner.find({name: req.params.username}))[0];
+
+    if(summonerByUsername) {
+      return res.json(summonerByUsername);
+    }
+
+    const {body: result} = await callApi(`/summoner/v4/summoners/by-name/${encodeURIComponent(req.params.username)}`);
     const summoner = await Summoner.findOne({accountId: result.accountId}).exec();
 
     if(!summoner) {
@@ -29,8 +35,8 @@ router.get('/:username', async (req, res) => {
 
 router.get('/entries/:userId', async (req, res) => {
   try {
-    const result = await callApi(`/league/v4/entries/by-summoner/${req.params.userId}`);
-    res.json(result);
+    const {body} = await callApi(`/league/v4/entries/by-summoner/${req.params.userId}`);
+    res.json(body);
 
   } catch(e) {
     console.error('error', e);
